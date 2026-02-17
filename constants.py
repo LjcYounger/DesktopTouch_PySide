@@ -11,6 +11,9 @@ class GlobalConstants:
     MOUSE_HIT_AREA = (mouse.Button.left, mouse.Button.right, mouse.Button.middle, mouse.Button.x1, mouse.Button.x2)
 
     SIZE = 512
+    MAX_FPS = 60
+
+    TOUCH_EFFECT_WIDGET_SIDE = 256
 
 class MeshTriConstants:
     START_LIFETIME = 0.6
@@ -19,6 +22,8 @@ class RingConstants:
     # === 基础属性 ===
     START_LIFETIME = 0.2
     START_SIZE = 0.12
+    START_ROTATION = 0
+    get_start_rotation = lambda self: random.uniform(0, 360)
 
     # === 颜色渐变配置 ===
     COLOR_KEY_POINTS = [
@@ -48,12 +53,14 @@ class RingConstants:
     GRAYSCALE_IMAGE_PATH = 'pictures/effects/FX_TEX_Circle_01.png'
     GRAYSCALE_IMAGE = load_grayscale_image(GRAYSCALE_IMAGE_PATH)
 
-    # === 工具方法 ===
-    @staticmethod
-    def get_start_rotation():
-        return random.uniform(0, 360)
 
 class RingXConstants:
+
+    START_SIZE = 0.1
+    get_start_size = lambda self: random.uniform(0.1, 0.2)
+
+    START_LIFETIME = 0.2
+    START_SPEED = 0.2
 
     # === 颜色渐变配置 ===
     COLOR_KEY_POINTS = [
@@ -79,34 +86,39 @@ class RingXConstants:
         SIZE_KEY_POINTS["tangents"]
     )
 
-    @staticmethod
-    def get_start_size():
-        return random.uniform(0.1, 0.2)
+    # === 资源路径 ===
+    GRAYSCALE_IMAGE_PATH = 'pictures/effects/FX_TEX_TRIangle_02.png'
+    GRAYSCALE_IMAGE = load_grayscale_image(GRAYSCALE_IMAGE_PATH)
+
 
 class Ring3Constants(RingXConstants):
+    
+    get_start_lifetime = lambda self: random.uniform(0.6, 0.7)
+    get_start_speed = lambda self: random.uniform(0.3, 0.4)
 
     class Emission:
         COUNT = 4
         INTERVAL = 0.010
-    @staticmethod
-    def get_start_lifetime():
-        return random.uniform(0.6, 0.7)
-    
-    @staticmethod
-    def get_start_speed():
-        return random.uniform(0.3, 0.4)
+
+    class Shape:
+        RADIUS = 1
+        ARC = 360
+        SCALE = (0.3, 0.3)
+
     
 class Ring4Constants(RingXConstants):
 
+    get_start_lifetime = lambda self: random.uniform(0.2, 0.4)
+    get_start_speed = lambda self: random.uniform(0.2, 0.3)
+
     class Emission:
         RATE_OVER_DISTANCE = 5
-    @staticmethod
-    def get_start_lifetime():
-        return random.uniform(0.2, 0.4)
-    
-    @staticmethod
-    def get_start_speed():
-        return random.uniform(0.2, 0.3)
+
+    class Shape:
+        RADIUS = 1
+        ARC = 360
+        SCALE = (0.15, 0.15)
+
 
 class TrailConstants:
     pass

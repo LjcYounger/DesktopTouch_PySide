@@ -67,7 +67,7 @@ class TransparentWindow(QMainWindow):
         """设置60帧计时器"""
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.on_timer_timeout)
-        self.frame_time = 1000.0 / 60.0  # 60 FPS
+        self.frame_time = 1000.0 / GlobalConstants.MAX_FPS
         self.timer.start(self.frame_time)
         self.elapsed_time = 0.0
 
@@ -93,8 +93,9 @@ class TransparentWindow(QMainWindow):
         """在指定位置创建触摸效果"""
         # 创建TouchEffectWidget实例
         effect_widget = TouchEffectWidget(pos, time.time(), self.update_signal, self)
+        side = GlobalConstants.TOUCH_EFFECT_WIDGET_SIDE
         # 设置widget的位置和大小
-        effect_widget.setGeometry(pos.x() - 100, pos.y() - 100, 200, 200)
+        effect_widget.setGeometry(pos.x() - side / 2, pos.y() - side / 2, side, side)
         effect_widget.show()
         # 添加到特效列表中
         self.touch_effects.append(effect_widget)
