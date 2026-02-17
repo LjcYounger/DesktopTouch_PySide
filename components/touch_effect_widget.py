@@ -33,7 +33,8 @@ class TouchEffectWidget(QWidget):
         self.ring_pixmap = self.ring.get_frame(self.time)
         self.ring_3_pixmap = self.ring_3.get_frame(self.time)
 
-        if all((self.ring_pixmap, self.ring_3_pixmap)) is None:
+        if all((self.ring_pixmap, 
+                self.ring_3_pixmap)) is None:
             self.hide()  # 隐藏而不是删除，让父窗口的清理逻辑处理
             return False
         self.update()  # 触发重绘
@@ -49,7 +50,7 @@ class TouchEffectWidget(QWidget):
             if self.ring_pixmap:
                 self.ring.draw_centered_pixmap(painter, self.ring_pixmap, self.rect())
             if self.ring_3_pixmap:
-                self.ring_3.draw_centered_pixmap(painter, self.ring_3_pixmap, self.rect())
+                self.ring_3.draw_centered_pixmap(painter, self.ring_3_pixmap, self.rect(), self.time)
         finally:
             # QPainter会自动清理，不需要手动调用end()
             pass

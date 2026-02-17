@@ -1,6 +1,5 @@
 import ctypes
-
-from constants import WindowsApiConstants
+import numpy as np
 
 def get_fps(default_fps = 60):
     """
@@ -25,6 +24,12 @@ def get_fps(default_fps = 60):
             return default_fps
     return fps
 
+class WindowsApiConstants:
+    # Windows API常量
+    WS_EX_LAYERED = 0x00080000
+    WS_EX_TRANSPARENT = 0x00000020
+    GWL_EXSTYLE = -20
+
 def set_mouse_thru(hwnd):
     # 获取当前扩展样式
     current_style = ctypes.windll.user32.GetWindowLongW(hwnd, WindowsApiConstants.GWL_EXSTYLE)
@@ -34,3 +39,10 @@ def set_mouse_thru(hwnd):
         WindowsApiConstants.GWL_EXSTYLE, 
         current_style | WindowsApiConstants.WS_EX_LAYERED | WindowsApiConstants.WS_EX_TRANSPARENT
     )
+
+def evaluate_piecewise_hermite(break_point, func1, func2):
+    """分段hermite插值计算"""
+    def evaluator(x):
+        mask = np.asarray(x) < break_point
+        return np.where(mask, func1(x), func2(x))
+    return evaluator
