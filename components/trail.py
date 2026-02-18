@@ -1,101 +1,107 @@
-import pygame as pg
+import time
 import math
-import numpy as np
+from dataclasses import dataclass
+from typing import List, Tuple, Optional
+from PySide6.QtCore import QPointF
+from PySide6.QtGui import QPainter, QPen, QColor, QPainterPath
 
-class Trail(pg.sprite.Sprite):
-    """
-    拖尾特效类
+@dataclass
+class TrailPoint:
+    """拖尾点数据结构"""
+    position: QPointF
+    timestamp: float
+    pressure: float = 1.0  # 压感强度(0-1)
+
+@dataclass
+class TrailSegment:
+    """拖尾线段数据结构"""
+    start_point: TrailPoint
+    end_point: TrailPoint
+    width: float
+    color: QColor
+    alpha: int
+
+class TrailRenderer:
+    """拖尾渲染器 - 专门负责生成拖尾绘制数据"""
     
-    创建跟随鼠标移动的拖尾视觉效果，通过一系列渐变透明的图像切片
-    来模拟运动轨迹的拖尾效果。
-    """
+    def __init__(self):
+        # 拖尾配置参数
+        self.max_points = 30           # 最大拖尾点数
+        self.trail_lifetime = 0.8      # 拖尾生命周期(秒)
+        self.base_width = 6.0          # 基础宽度
+        self.width_decay = 0.95        # 宽度衰减系数
+        self.color = QColor(100, 180, 255, 200)  # 拖尾颜色
+        
+        # 拖尾点存储
+        self.points: List[TrailPoint] = []
+        self.is_drawing = False
+        self.last_update_time = 0.0    # 记录上次更新时间
+        
+    def start_drawing(self, position: QPointF, timestamp: float):
+        """开始绘制拖尾"""
+        self.is_drawing = True
+        self.add_point(position, timestamp)
+        
+    def stop_drawing(self):
+        """停止绘制拖尾"""
+        self.is_drawing = False
+        
+    def add_point(self, position: QPointF, timestamp: float, pressure: float = 1.0):
+        """添加拖尾点"""
+        point = TrailPoint(position, timestamp, pressure)
+        self.points.append(point)
+        
+        # 限制点数
+        if len(self.points) > self.max_points:
+            self.points.pop(0)
+            
+    def update_frame(self, current_time: float):
+        """每帧更新 - 清理过期点"""
+        self.last_update_time = current_time
+        
+        # 移除过期的点
+        active_points = []
+        for point in self.points:
+            age = current_time - point.timestamp
+            if age <= self.trail_lifetime:
+                active_points.append(point)
+        self.points = active_points
+        
+    def generate_segments(self) -> List[TrailSegment]:
+        """生成拖尾线段数据用于绘制"""
+        if len(self.points) < 2:
+            return []
+            
+        segments = []
+        current_time = self.last_update_time  # 使用记录的时间
+        
+        for i in range(len(self.points) - 1):
+            start_point = self.points[i]
+            end_point = self.points[i + 1]
+            
+            # 计算线段属性
+            age_ratio = (current_time - start_point.timestamp) / self.trail_lifetime
+            alpha = int(255 * (1 - age_ratio))  # 年龄越大越透明
+            
+            # 宽度根据位置递减
+            width_factor = (len(self.points) - i) / len(self.points)
+            width = self.base_width * width_factor * start_point.pressure
+            
+            segment = TrailSegment(
+                start_point=start_point,
+                end_point=end_point,
+                width=max(1.0, width),
+                color=self.color,
+                alpha=max(0, alpha)
+            )
+            segments.append(segment)
+            
+        return segments
     
-    def __init__(self, speed, allsize, tps, screensize, tp_size):
-        """
-        初始化拖尾特效
-        
-        Args:
-            speed (float): 动画播放速度
-            allsize (float): 基准尺寸
-            tps (list): 拖尾图案切片列表
-            screensize (tuple): 屏幕尺寸 (width, height)
-            tp_size (tuple): 单个切片的尺寸 (width, height)
-        """
-        super().__init__()
-        
-        # 基本属性
-        self.type = "trail"  # 精灵类型标识
-        self.life = 0.3      # 拖尾生命周期
-        self.size = 0.12 * allsize  # 基准尺寸
-        self.screensize = screensize  # 屏幕尺寸
-        self.image = pg.Surface(self.screensize, pg.SRCALPHA)  # 创建透明绘图表面
-        self.rect = self.image.get_rect(topleft=(0, 0))  # 设置位置
-        
-        # 计算切片间隔和重新排列切片
-        self.dn = tp_size[0] / (speed * self.life)  # 每帧的切片步长
-        self.tps = [tps[int(i)] for i in np.arange(0, len(tps), self.dn)]  # 重新采样切片
-        self.tps.reverse()  # 反转顺序使最新的在最前面
-        self.trails = [None] * len(self.tps)  # 存储拖尾序列
-        self.die = 0      # 销毁计数器
-        self.live = True  # 生存状态标志
-
-    def update(self, **kwargs):
-        """
-        更新拖尾特效状态
-        
-        Args:
-            **kwargs: 包含鼠标位置和状态信息的字典
-                     - previous_pos: 上一帧鼠标位置
-                     - mouse_pos: 当前鼠标位置  
-                     - delta_pos: 位置变化向量
-                     - distance: 移动距离
-                     - mouse_pressed: 鼠标是否按下
-        """
-        # 获取鼠标位置信息
-        previous_pos, mouse_pos = kwargs["previous_pos"], kwargs["mouse_pos"]
-        if previous_pos and mouse_pos:
-            # 提取其他必要参数
-            delta_pos = kwargs["delta_pos"]
-            distance = kwargs["distance"]
-            mouse_pressed = kwargs["mouse_pressed"]
-
-            # 清空绘图表面
-            self.image.fill((0, 0, 0, 0))
-
-            # 如果还处于活跃状态，添加新的拖尾元素
-            if self.live:
-                # 计算拖尾角度
-                angle = math.degrees(math.atan2(delta_pos[0], delta_pos[1]))
-                # 创建旋转和缩放后的切片序列
-                slis = [pg.transform.rotate(pg.transform.scale(ix, (ix.get_size()[0], distance)), angle) for ix in self.tps]
-                # 计算中点位置
-                apos = tuple((x1 + x2) / 2 for x1, x2 in zip(previous_pos, mouse_pos))
-                # 添加到拖尾序列
-                self.trails.append([slis, apos])
-            
-            # 维护拖尾序列长度
-            if len(self.trails) >= len(self.tps) or not self.live and self.trails:
-                self.trails.pop(0)  # 移除最早的元素
-            
-            # 绘制所有拖尾元素
-            for index, sli in enumerate(self.trails):
-                if sli:
-                    # 获取对应索引的图像切片
-                    image = sli[0][index]
-                    # 设置透明度（越旧的元素越透明）
-                    image.set_alpha(255 * index / len(self.trails))
-                    # 绘制到主表面
-                    self.image.blit(image, (sli[1][0] - image.get_size()[0] / 2, sli[1][1] - image.get_size()[1] / 2))
-            
-            # 发光效果（被注释）
-            # self.image = apply_glow_effect(self.image, 10, 10)
-            
-            # 更新生存状态
-            if not mouse_pressed:
-                self.live = False  # 鼠标释放后停止添加新元素
-            
-            # 处理销毁逻辑
-            if not self.live:
-                if self.die > len(self.tps):
-                    self.kill()  # 所有拖尾元素消失后销毁精灵
-                self.die += 1  # 增加销毁计数
+    def get_current_position(self) -> Optional[QPointF]:
+        """获取当前位置"""
+        return self.points[-1].position if self.points else None
+    
+    def is_active(self) -> bool:
+        """检查是否有活跃的拖尾"""
+        return len(self.points) > 0

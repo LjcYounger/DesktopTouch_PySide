@@ -4,9 +4,34 @@ from PySide6.QtGui import QImage, QPixmap
 def load_grayscale_image(image_path: str) -> QImage:
     return QImage(image_path)
 
+def split_image_vertically(image: QImage) -> tuple[QImage, QImage]:
+    """
+    将QImage从中间竖直对半切割
+    
+    Args:
+        image (QImage): 输入的图像
+        
+    Returns:
+        tuple[QImage, QImage]: 包含左半部分和右半部分的元组
+    """
+    width = image.width()
+    height = image.height()
+    
+    # 计算中间位置
+    mid_x = width // 2
+    
+    # 切割左半部分
+    left_image = image.copy(0, 0, mid_x, height)
+    
+    # 切割右半部分
+    right_image = image.copy(mid_x, 0, width - mid_x, height)
+    
+    return (left_image, right_image)
+
 def change_image_by_grayscale(image: QImage, 
                               color: tuple, 
                               alpha: int, 
+                              grayscale_image_transparent: bool=False,
                               impact_on_transparency: int=255, 
                               invert_grayscale: bool=False):
     """
@@ -16,6 +41,7 @@ def change_image_by_grayscale(image: QImage,
         image (QImage): 输入的灰度图像
         color (tuple): 目标RGB颜色值 (r, g, b)
         alpha (int): 透明度值 (0-255)
+        grayscale_image_transparent (bool): 输入的灰度图是否背景透明
         impact_on_transparency (int): 透明度影响因子 (0-255)
         invert_grayscale (bool): 是否反转灰度值
         
@@ -48,14 +74,21 @@ def change_image_by_grayscale(image: QImage,
     # 解包目标颜色
     target_r, target_g, target_b = color
     
-    # 计算新的RGB值
-    new_r = (target_r * gray_normalized).astype(np.uint8)
-    new_g = (target_g * gray_normalized).astype(np.uint8)
-    new_b = (target_b * gray_normalized).astype(np.uint8)
-    
-    # 计算新的Alpha值
-    new_a = (alpha * gray_values / impact_on_transparency).astype(np.uint8)
-    new_a = np.clip(new_a, 0, 255)  # 限制在0-255范围内
+    # 如果grayscale_image_transparent为True，则直接替换RGB值
+    if grayscale_image_transparent:
+        new_r = (target_r * gray_normalized).astype(np.uint8)
+        new_g = (target_g * gray_normalized).astype(np.uint8)
+        new_b = (target_b * gray_normalized).astype(np.uint8)
+        new_a = img_array[:, :, 3]  # 保留原始Alpha通道
+    else:
+        # 计算新的RGB值
+        new_r = (target_r * gray_normalized).astype(np.uint8)
+        new_g = (target_g * gray_normalized).astype(np.uint8)
+        new_b = (target_b * gray_normalized).astype(np.uint8)
+        
+        # 计算新的Alpha值
+        new_a = (alpha * gray_values / impact_on_transparency).astype(np.uint8)
+        new_a = np.clip(new_a, 0, 255)  # 限制在0-255范围内
     
     # 组合成新的ARGB图像数组（注意Qt使用BGRA顺序）
     result_array = np.stack([new_b, new_g, new_r, new_a], axis=2)

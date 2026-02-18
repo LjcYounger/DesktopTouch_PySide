@@ -8,10 +8,13 @@ from constants import GlobalConstants
 from utils import set_mouse_thru, get_fps
 
 from components.touch_effect_widget import TouchEffectWidget
+from components.full_screen_widget import FullScreenWidget
 
 class MouseSignalHandler(QObject):
     """鼠标事件信号处理器"""
     mouse_clicked = Signal(QPoint)
+    mouse_moved = Signal(QPoint, bool)  # pos, is_pressed
+    mouse_state_changed = Signal(bool)  # is_pressed
     
     def __init__(self):
         super().__init__()
@@ -27,7 +30,11 @@ class TransparentWindow(QMainWindow):
         self.start_mouse_listener()
         self.setup_timer()
         self.touch_effects = []  # 存储所有触摸效果widget
-
+        self.is_mouse_pressed = False  # 当前鼠标按下状态
+        
+        # 创建全屏特效控件
+        self.setup_fullscreen_effects()
+        
         #self.fps = get_fps()
 
     def initUI(self):
@@ -54,16 +61,35 @@ class TransparentWindow(QMainWindow):
         # 启用鼠标跟踪
         self.setMouseTracking(True)
 
+    def setup_fullscreen_effects(self):
+        """设置全屏特效控件"""
+        screens = QApplication.screens()
+        
+        # 创建统一的全屏特效控件
+        self.fullscreen_widget = FullScreenWidget(self.update_signal, self)
+        self.fullscreen_widget.set_fullscreen_geometry(screens)
+        self.fullscreen_widget.show()
+
     def setup_mouse_handler(self):
         """设置鼠标事件处理器"""
         self.mouse_handler = MouseSignalHandler()
         self.mouse_handler.mouse_clicked.connect(self.handle_mouse_click)
+        self.mouse_handler.mouse_moved.connect(self.handle_mouse_move)
+        self.mouse_handler.mouse_state_changed.connect(self.handle_mouse_state)
 
     def handle_mouse_click(self, global_pos):
-        """处理鼠标点击事件（在主线程中执行）"""
-        # 将屏幕坐标转换为窗口坐标
+        """处理鼠标点击事件"""
         local_pos = self.mapFromGlobal(global_pos)
         self.create_touch_effect(local_pos)
+
+    def handle_mouse_move(self, global_pos, is_pressed):
+        """处理鼠标移动事件 - 传递给全屏特效"""
+        local_pos = self.mapFromGlobal(global_pos)
+        self.fullscreen_widget.add_trail_input(local_pos, is_pressed)
+
+    def handle_mouse_state(self, is_pressed):
+        """处理鼠标按键状态变化"""
+        self.is_mouse_pressed = is_pressed
 
     def setup_timer(self):
         """设置60帧计时器"""
@@ -75,33 +101,36 @@ class TransparentWindow(QMainWindow):
 
     def on_timer_timeout(self):
         """计时器超时处理"""
-        # 发送更新信号给所有TouchEffectWidget
-        self.update_signal.emit(time.time())
+        current_time = time.time()
+        
+        # 发送更新信号（会触发全屏特效更新）
+        self.update_signal.emit(current_time)
         
         # 清理已经完成的特效
         self.touch_effects = [effect for effect in self.touch_effects if effect.isVisible()]
 
-        #print(self.fps(), end=' ')
-
     def start_mouse_listener(self):
         def on_click(x, y, button, pressed):
-            if pressed and button in GlobalConstants.MOUSE_HIT_AREA:
-                # 使用信号在主线程中处理
-                self.mouse_handler.mouse_clicked.emit(QPoint(x, y))
+            if button in GlobalConstants.MOUSE_HIT_AREA:
+                if pressed:
+                    self.mouse_handler.mouse_clicked.emit(QPoint(x, y))
+                # 发送状态变化信号
+                self.mouse_handler.mouse_state_changed.emit(pressed)
+
+        def on_move(x, y):
+            # 使用当前鼠标状态
+            self.mouse_handler.mouse_moved.emit(QPoint(x, y), self.is_mouse_pressed)
 
         # 启动鼠标监听器
-        self.mouse_listener = mouse.Listener(on_click=on_click)
+        self.mouse_listener = mouse.Listener(on_click=on_click, on_move=on_move)
         self.mouse_listener.start()
 
     def create_touch_effect(self, pos):
         """在指定位置创建触摸效果"""
-        # 创建TouchEffectWidget实例
         effect_widget = TouchEffectWidget(pos, time.time(), self.update_signal, self)
         side = GlobalConstants.TOUCH_EFFECT_WIDGET_SIDE
-        # 设置widget的位置和大小
         effect_widget.setGeometry(pos.x() - side / 2, pos.y() - side / 2, side, side)
         effect_widget.show()
-        # 添加到特效列表中
         self.touch_effects.append(effect_widget)
 
     def showEvent(self, event):

@@ -8,8 +8,9 @@ from components.ring_x import RingX
 
 class Ring3(RingX):
     """触摸圆环特效类"""
+    constants = Ring3Constants()
     def __init__(self) -> None:
-        super().__init__(Ring3Constants())
+        super().__init__(self.constants)
 
     def get_frame(self, time) -> List[tuple[QPixmap, float]] | None:
         """
@@ -40,7 +41,7 @@ class Ring3(RingX):
         for i, temp in enumerate(pixmap_list):
             if temp is None: continue
             pixmap, adjusted_time = temp
-        
+            
             pixmap = pixmap.transformed(self.flip_transform)
                 
             pixmap_rect = pixmap.rect()
@@ -49,3 +50,5 @@ class Ring3(RingX):
 
             current_pos = self.calculate_current_position(center_pos, self.velocities[i], adjusted_time)
             painter.drawPixmap(current_pos[0] - delta_pos[0], current_pos[1] - delta_pos[1], pixmap)
+
+        

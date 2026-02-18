@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import QPainter
 from PySide6.QtCore import Qt, Signal
 
+from components.mesh_tri import MeshTri
 from components.ring import Ring
 from components.ring_3 import Ring3
 
@@ -12,9 +13,11 @@ class TouchEffectWidget(QWidget):
         super().__init__(parent)
         self.center_pos = mouse_pos
         self.initial_time = initial_time
+        #self.mesh_tri_pixmap = None
         self.ring_pixmap = None  # 初始化pixmap属性
         self.ring_3_pixmap = None
         
+        self.mesh_tri = MeshTri()
         self.ring = Ring()
         self.ring_3 = Ring3()
         # 连接更新信号
@@ -30,6 +33,7 @@ class TouchEffectWidget(QWidget):
     def update_effect(self, current_time) -> bool:
         """更新特效动画"""
         self.time = current_time - self.initial_time
+        #self.mesh_tri_pixmap = self.mesh_tri.get_frame(self.time)
         self.ring_pixmap = self.ring.get_frame(self.time)
         self.ring_3_pixmap = self.ring_3.get_frame(self.time)
 
@@ -51,6 +55,8 @@ class TouchEffectWidget(QWidget):
                 self.ring.draw_centered_pixmap(painter, self.ring_pixmap, self.rect())
             if self.ring_3_pixmap:
                 self.ring_3.draw_centered_pixmap(painter, self.ring_3_pixmap, self.rect(), self.time)
+            #if self.mesh_tri_pixmap:
+            #    self.mesh_tri.draw_centered_pixmap(painter, self.mesh_tri_pixmap, self.rect(), self.time)
         finally:
             # QPainter会自动清理，不需要手动调用end()
             pass

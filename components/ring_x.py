@@ -1,7 +1,7 @@
 import math
 import random
 from typing import List
-    
+
 from PySide6.QtGui import QPixmap, QPainter, QTransform
 
 from constants import GlobalConstants
@@ -25,7 +25,7 @@ class RingX:
         """
         根据时间生成当前帧的QPixmap
         """
-        return generate_animated_frame(time, self.constants)
+        return generate_animated_frame(time, self.constants, grayscale_image_transparent=True)
 
     def get_random_velocity(self):
         """

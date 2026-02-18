@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from img_utils import change_image_by_grayscale
 from constants import GlobalConstants, RingConstants
 
-def generate_animated_frame(time, Constants) -> QPixmap | None:
+def generate_animated_frame(time, Constants, grayscale_image_transparent=False) -> QPixmap | None:
         """
         根据时间生成当前帧的QPixmap
         """
@@ -32,7 +32,8 @@ def generate_animated_frame(time, Constants) -> QPixmap | None:
         result_pixmap = change_image_by_grayscale(
             Constants.GRAYSCALE_IMAGE,
             rgb_values,
-            alpha_value
+            alpha_value,
+            grayscale_image_transparent
         )
         
         # 创建变换对象

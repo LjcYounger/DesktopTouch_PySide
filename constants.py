@@ -4,7 +4,7 @@ import numpy as np
 from scipy.interpolate import interp1d, CubicHermiteSpline
 from pynput import mouse
 
-from img_utils import load_grayscale_image
+from img_utils import load_grayscale_image, split_image_vertically
 from utils import evaluate_piecewise_hermite
 
 class GlobalConstants:
@@ -15,6 +15,8 @@ class GlobalConstants:
     MAX_FPS = 60
 
     TOUCH_EFFECT_WIDGET_SIDE = SIZE
+
+    DEBUG_MODE = False
 
 class MeshTriConstants:
     START_LIFETIME = 0.6
@@ -195,7 +197,9 @@ class Ring4Constants(RingXConstants):
     get_start_speed = lambda self: random.uniform(0.2, 0.3)
 
     class Emission:
-        RATE_OVER_DISTANCE = 5
+        RATE_OVER_DISTANCE = 50
+        COUNT = 1
+        INTERVAL = 0.01
 
     class Shape:
         RADIUS = 1
