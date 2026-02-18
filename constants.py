@@ -14,7 +14,7 @@ class GlobalConstants:
     SIZE = 256
     MAX_FPS = 60
 
-    TOUCH_EFFECT_WIDGET_SIDE = 256
+    TOUCH_EFFECT_WIDGET_SIDE = SIZE
 
 class MeshTriConstants:
     START_LIFETIME = 0.6
@@ -128,6 +128,8 @@ class RingConstants:
         SIZE_KEY_POINTS["tangents"]
     )
 
+    ROTATION_OVER_LIFETIME = lambda self, time: self.START_ROTATION
+
     # === 资源路径 ===
     GRAYSCALE_IMAGE_PATH = 'pictures/effects/FX_TEX_Circle_01.png'
     GRAYSCALE_IMAGE = load_grayscale_image(GRAYSCALE_IMAGE_PATH)
@@ -165,6 +167,8 @@ class RingXConstants:
         SIZE_KEY_POINTS["tangents"]
     )
 
+    ROTATION_OVER_LIFETIME = lambda self, time: 0
+
     # === 资源路径 ===
     GRAYSCALE_IMAGE_PATH = 'pictures/effects/FX_TEX_TRIangle_02.png'
     GRAYSCALE_IMAGE = load_grayscale_image(GRAYSCALE_IMAGE_PATH)
@@ -177,7 +181,7 @@ class Ring3Constants(RingXConstants):
 
     class Emission:
         COUNT = 4
-        INTERVAL = 0.010
+        INTERVAL = 0.01
 
     class Shape:
         RADIUS = 1

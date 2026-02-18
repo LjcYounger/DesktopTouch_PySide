@@ -1,5 +1,7 @@
 import math
 import random
+from typing import List
+    
 from PySide6.QtGui import QPixmap, QPainter, QTransform
 
 from constants import GlobalConstants
@@ -19,7 +21,7 @@ class RingX:
         self.assumed_elapsed_time = self.constants.Shape.RADIUS / self.constants.START_SPEED
         self.velocities = tuple(self.get_random_velocity() for _ in range(self.constants.Emission.COUNT))
 
-    def get_frame(self, time) -> QPixmap | None:
+    def get_frame(self, time) -> List[QPixmap] | None:
         """
         根据时间生成当前帧的QPixmap
         """

@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QRect, QPoint, QTimer, Signal, QObject
 from pynput import mouse
 
 from constants import GlobalConstants
-from utils import set_mouse_thru
+from utils import set_mouse_thru, get_fps
 
 from components.touch_effect_widget import TouchEffectWidget
 
@@ -27,6 +27,8 @@ class TransparentWindow(QMainWindow):
         self.start_mouse_listener()
         self.setup_timer()
         self.touch_effects = []  # 存储所有触摸效果widget
+
+        #self.fps = get_fps()
 
     def initUI(self):
         # 设置窗口无边框
@@ -78,6 +80,8 @@ class TransparentWindow(QMainWindow):
         
         # 清理已经完成的特效
         self.touch_effects = [effect for effect in self.touch_effects if effect.isVisible()]
+
+        #print(self.fps(), end=' ')
 
     def start_mouse_listener(self):
         def on_click(x, y, button, pressed):

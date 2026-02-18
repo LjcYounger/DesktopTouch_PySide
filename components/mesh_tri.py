@@ -1,6 +1,6 @@
 from PySide6.QtGui import QPixmap, QPainter
 
-from constants import RingConstants
+from constants import MeshTriConstants
 from generate_frame import generate_animated_frame
 class MeshTri:
     """触摸圆环特效类
@@ -8,9 +8,11 @@ class MeshTri:
     创建一个随时间变化的圆形扩散特效，包含颜色渐变、透明度变化和尺寸缩放效果。
     使用constants中的插值函数和常量来实现平滑的动画效果。
     """
-    constants = RingConstants()
+    constants = MeshTriConstants()
     def __init__(self) -> None:
+        self.constants.START_SIZE = self.constants.get_start_size()
         self.constants.START_ROTATION = self.constants.get_start_rotation()
+        self.constants.CustomData.CUSTOM1_X = self.constants.CustomData.get_custom1_x()
 
     def get_frame(self, time) -> QPixmap | None:
         """

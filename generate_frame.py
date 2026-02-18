@@ -1,8 +1,8 @@
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QTransform
 from PySide6.QtCore import Qt
 
 from img_utils import change_image_by_grayscale
-from constants import GlobalConstants
+from constants import GlobalConstants, RingConstants
 
 def generate_animated_frame(time, Constants) -> QPixmap | None:
         """
@@ -35,11 +35,25 @@ def generate_animated_frame(time, Constants) -> QPixmap | None:
             alpha_value
         )
         
-        # 缩放基础图案
-        scaled_pixmap = result_pixmap.scaled(
+        # 创建变换对象
+        transform = QTransform()
+        
+        # 应用缩放变换
+        #transform.scale(size_multiplier, size_multiplier)
+        
+        # 应用旋转变换
+        transform.rotate(Constants.ROTATION_OVER_LIFETIME(time_percentage))
+        #if Constants.ROTATION_OVER_LIFETIME(time_percentage) != 0:
+        #    print(Constants.ROTATION_OVER_LIFETIME(time_percentage))
+        
+        # 应用变换到pixmap
+        transformed_pixmap = result_pixmap.transformed(transform, Qt.TransformationMode.SmoothTransformation)
+        
+        # 调整最终尺寸
+        final_pixmap = transformed_pixmap.scaled(
             actual_size, actual_size, 
             Qt.AspectRatioMode.KeepAspectRatio, 
             Qt.TransformationMode.SmoothTransformation
         )
 
-        return scaled_pixmap
+        return final_pixmap
