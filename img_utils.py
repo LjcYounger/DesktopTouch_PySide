@@ -1,5 +1,6 @@
 import numpy as np
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtGui import QImage, QPixmap, QPainter
+from PySide6.QtCore import Qt
 
 def load_grayscale_image(image_path: str) -> QImage:
     return QImage(image_path)
@@ -27,6 +28,64 @@ def split_image_vertically(image: QImage) -> tuple[QImage, QImage]:
     right_image = image.copy(mid_x, 0, width - mid_x, height)
     
     return (left_image, right_image)
+
+def slice_image_vertically(image: QImage) -> list[QImage]:
+    """
+    将QImage按1像素宽度竖直切片
+    
+    Args:
+        image (QImage): 输入的图像
+        
+    Returns:
+        list[QImage]: 包含所有1像素宽竖直切片的列表
+    """
+    width = image.width()
+    height = image.height()
+    
+    # 创建存储切片的列表
+    slices = []
+    
+    # 按1像素宽度逐个切割
+    for x in range(width):
+        slice_img = image.copy(x, 0, 1, height)
+        slices.append(slice_img)
+    
+    return slices
+
+def repeat_vertical_strip_horizontally(image: QPixmap, length: int) -> QPixmap:
+    """
+    将竖条窄图像横向复制指定次数
+    
+    Args:
+        image (QPixmap): 输入的竖条图像
+        length (int): 复制次数，也是输出图像的最终宽度
+        
+    Returns:
+        QPixmap: 横向重复后的图像
+    """
+    
+    # 将QPixmap转换为QImage以便处理
+    img = image.toImage()
+    
+    # 确保图像是Format_ARGB32格式
+    if img.format() != QImage.Format.Format_ARGB32:
+        img = img.convertToFormat(QImage.Format.Format_ARGB32)
+    
+    width = img.width()
+    height = img.height()
+    
+    # 创建结果图像
+    result_img = QImage(length, height, QImage.Format.Format_ARGB32)
+    result_img.fill(Qt.GlobalColor.transparent)  # 填充透明背景
+    
+    # 使用 QPainter 进行高效的图像复制
+    painter = QPainter(result_img)
+    for i in range(length):
+        x_offset = i * width
+        painter.drawImage(x_offset, 0, img)
+    painter.end()
+    
+    return QPixmap.fromImage(result_img)
 
 def change_image_by_grayscale(image: QImage, 
                               color: tuple, 
