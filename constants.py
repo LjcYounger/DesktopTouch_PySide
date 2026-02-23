@@ -178,6 +178,7 @@ class RingXConstants:
 class Ring3Constants(RingXConstants):
     
     get_start_size = lambda self: random.uniform(0.1, 0.2)
+    get_start_size = lambda self: random.uniform(0.1, 0.2)
     get_start_lifetime = lambda self: random.uniform(0.6, 0.7)
     get_start_speed = lambda self: random.uniform(0.3, 0.4)
 
@@ -193,6 +194,7 @@ class Ring3Constants(RingXConstants):
     
 class Ring4Constants(RingXConstants):
 
+    get_start_size = lambda self: random.uniform(0.1, 0.2) * 0.5
     get_start_size = lambda self: random.uniform(0.1, 0.2) * 0.5
     get_start_lifetime = lambda self: random.uniform(0.2, 0.4)
     get_start_speed = lambda self: random.uniform(0.2, 0.3)

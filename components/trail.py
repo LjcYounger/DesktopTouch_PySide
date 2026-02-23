@@ -8,6 +8,8 @@ from PySide6.QtGui import QPainter, QPen, QColor, QPainterPath, QPixmap, QTransf
 from constants import TrailConstants
 from img_utils import change_image_by_grayscale, repeat_vertical_strip_horizontally
 
+from constants import TrailConstants
+
 @dataclass
 class TrailPoint:
     """拖尾点数据结构"""
