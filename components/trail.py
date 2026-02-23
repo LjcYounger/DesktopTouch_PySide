@@ -8,13 +8,18 @@ from PySide6.QtGui import QPainter, QPen, QColor, QPainterPath, QPixmap, QTransf
 from constants import TrailConstants
 from img_utils import change_image_by_grayscale, repeat_vertical_strip_horizontally
 
-from constants import TrailConstants
-
 @dataclass
 class TrailPoint:
     """拖尾点数据结构"""
     position: QPointF
     timestamp: float
+
+@dataclass
+class TrailSlice:
+    """拖尾切片数据结构"""
+    pixmap: QPixmap
+    corner_x: float
+    corner_y: float
 
 @dataclass
 class TrailSegment:
@@ -24,8 +29,9 @@ class TrailSegment:
     width: float
     color: tuple
     age_ratio: float
-    length: float  # 添加线段长度
-    angle: float   # 添加线段倾斜角(弧度)
+    length: float  # 线段长度
+    angle: float   # 线段倾斜角(弧度)
+    slices: List[TrailSlice]  # 缓存的切片列表
 
 class TrailRenderer:
     """拖尾渲染器 - 专门负责生成拖尾绘制数据"""
@@ -59,7 +65,7 @@ class TrailRenderer:
         self.last_update_time = current_time
         
         # 计算绝对截止时间（比当前时间早lifetime秒的点需要移除）
-        cutoff_time = current_time - self.constants .TIME
+        cutoff_time = current_time - self.constants.TIME
         
         # 使用列表推导式高效过滤（保留时间戳大于等于cutoff_time的点）
         self.points = [p for p in self.points if p.timestamp >= cutoff_time]
@@ -87,21 +93,62 @@ class TrailRenderer:
             length = math.sqrt(dx * dx + dy * dy)
             angle = math.atan2(dy, dx)  # 弧度制角度
             
+            width = self.constants.WIDTH(age_ratio)
+            # 预生成切片
+            slices = self._generate_slices(start_point.position, end_point.position, length, angle, age_ratio, width)
+            
             segment = TrailSegment(
                 start_point=start_point,
                 end_point=end_point,
-                width=self.constants.WIDTH(age_ratio),
+                width=width,
                 color=self.constants.get_color(age_ratio),
                 age_ratio=age_ratio,
                 length=length,
-                angle=angle
+                angle=angle,
+                slices=slices
             )
             segments.append(segment)
             
         return segments
+    
+    def _generate_slices(self, start_pos: QPointF, end_pos: QPointF, length: float, angle: float, age_ratio: float, width: float) -> List[TrailSlice]:
+        """预生成切片数据"""
+        slices = []
+        
+        # 获取灰度图像切片
+        grayscale_image_slice_index = int(age_ratio * len(self.constants.GARYSCALE_IMAGE_SLICES))
+        grayscale_image_slice = self.constants.GARYSCALE_IMAGE_SLICES[grayscale_image_slice_index].scaled(1, width)
+        
+        # 应用颜色和旋转
+        rendered_image_slice = change_image_by_grayscale(grayscale_image_slice, self.constants.get_color(age_ratio)[:-1], self.constants.get_color(age_ratio)[-1])
+        angle_degrees = math.degrees(angle)
+        rendered_image_slice = rendered_image_slice.transformed(QTransform().rotate(angle_degrees))
+        
+        # 计算单位向量
+        if length == 0:
+            return slices
+            
+        unit_dx = math.cos(angle)
+        unit_dy = math.sin(angle)
+        
+        # 生成每个切片的位置
+        for i in range(int(length)):
+            # 计算当前切片中心点的位置
+            progress = (i + 0.5) / length  # 中心点位置
+            center_x = start_pos.x() + progress * (end_pos.x() - start_pos.x())
+            center_y = start_pos.y() + progress * (end_pos.y() - start_pos.y())
+            
+            # 计算切片左上角坐标
+            half_width = 1 / 2.0
+            corner_x = center_x - unit_dx * half_width
+            corner_y = center_y - unit_dy * half_width
+            
+            slices.append(TrailSlice(rendered_image_slice, corner_x, corner_y))
+            
+        return slices
 
     def draw_segments(self, painter: QPainter, segments: List[TrailSegment]):
-        """绘制拖尾线段 - 修复QPainter资源管理问题"""
+        """绘制拖尾线段 - 直接使用预计算的切片数据"""
         if not segments:
             return
             
@@ -110,41 +157,9 @@ class TrailRenderer:
         
         try:
             for segment in segments:
-                grayscale_image_slice_index = int(segment.age_ratio * len(self.constants.GARYSCALE_IMAGE_SLICES))
-                grayscale_image_slice = self.constants.GARYSCALE_IMAGE_SLICES[grayscale_image_slice_index].scaled(1, segment.width)
-
-                # 获取线段的起始点和结束点
-                start_pos = segment.start_point.position
-                end_pos = segment.end_point.position
-                
-                # 直接使用预计算的长度和角度
-                length = segment.length
-                angle_degrees = math.degrees(segment.angle)  # 转换为角度制用于旋转
-
-                rendered_image_slice = change_image_by_grayscale(grayscale_image_slice, segment.color[:-1], segment.color[-1])
-                rendered_image_slice = rendered_image_slice.transformed(QTransform().rotate(angle_degrees))
-                
-                # 计算单位向量
-                if length == 0:
-                    continue
-                    
-                unit_dx = math.cos(segment.angle)
-                unit_dy = math.sin(segment.angle)
-                
-                # 逐个绘制切片
-                for i in range(int(length)):
-                    # 计算当前切片中心点的位置
-                    progress = (i + 0.5) / length  # 中心点位置
-                    center_x = start_pos.x() + progress * (end_pos.x() - start_pos.x())
-                    center_y = start_pos.y() + progress * (end_pos.y() - start_pos.y())
-                    
-                    # 计算切片左上角坐标（考虑切片宽度的一半偏移）
-                    half_width = 1 / 2.0
-                    corner_x = center_x - unit_dx * half_width
-                    corner_y = center_y - unit_dy * half_width
-                    
-                    # 在计算出的确切位置绘制切片
-                    painter.drawPixmap(corner_x, corner_y, rendered_image_slice)
+                # 直接绘制预计算的切片
+                for trail_slice in segment.slices:
+                    painter.drawPixmap(trail_slice.corner_x, trail_slice.corner_y, trail_slice.pixmap)
                     
         finally:
             # 恢复painter状态
