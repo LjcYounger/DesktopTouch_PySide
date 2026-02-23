@@ -140,7 +140,6 @@ class RingConstants:
 class RingXConstants:
 
     START_SIZE = 0.1
-    get_start_size = lambda self: random.uniform(0.1, 0.2)
 
     START_LIFETIME = 0.2
     START_SPEED = 0.2
@@ -178,6 +177,7 @@ class RingXConstants:
 
 class Ring3Constants(RingXConstants):
     
+    get_start_size = lambda self: random.uniform(0.1, 0.2)
     get_start_lifetime = lambda self: random.uniform(0.6, 0.7)
     get_start_speed = lambda self: random.uniform(0.3, 0.4)
 
@@ -193,6 +193,7 @@ class Ring3Constants(RingXConstants):
     
 class Ring4Constants(RingXConstants):
 
+    get_start_size = lambda self: random.uniform(0.1, 0.2) * 0.5
     get_start_lifetime = lambda self: random.uniform(0.2, 0.4)
     get_start_speed = lambda self: random.uniform(0.2, 0.3)
 
@@ -208,5 +209,20 @@ class Ring4Constants(RingXConstants):
 
 
 class TrailConstants:
-    pass
+    WIDTH = lambda self, t: 5.0
+    TIME = 0.3
+
+    # === 颜色渐变配置 ===
+    COLOR_KEY_POINTS = [
+        {"channel": "r", "time_percentages": (0.0, 0.021, 0.421, 1.0), "values": (0, 0, 0, 0)},
+        {"channel": "g", "time_percentages": (0.0, 0.021, 0.421, 1.0), "values": (100, 100, 24, 0)},
+        {"channel": "b", "time_percentages": (0.0, 0.021, 0.421, 1.0), "values": (255, 255, 72, 0)},
+        {"channel": "a", "time_percentages": (0.0, 1.0), "values": (255, 255)},
+    ]
+    COLOR = tuple(
+        interp1d(np.array(channel["time_percentages"]), np.array(channel["values"]), kind="linear")
+        for channel in COLOR_KEY_POINTS
+    )
+    def get_color(self, time_ratio):
+        return tuple(int(channel_interpolate(time_ratio)) for channel_interpolate in self.COLOR)
 

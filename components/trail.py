@@ -5,6 +5,8 @@ from typing import List, Tuple, Optional
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QPainter, QPen, QColor, QPainterPath
 
+from constants import TrailConstants
+
 @dataclass
 class TrailPoint:
     """拖尾点数据结构"""
@@ -18,19 +20,14 @@ class TrailSegment:
     start_point: TrailPoint
     end_point: TrailPoint
     width: float
-    color: QColor
+    color: tuple
     alpha: int
 
 class TrailRenderer:
     """拖尾渲染器 - 专门负责生成拖尾绘制数据"""
-    
+    constants = TrailConstants()
     def __init__(self):
-        # 拖尾配置参数
-        self.max_points = 30           # 最大拖尾点数
-        self.trail_lifetime = 0.8      # 拖尾生命周期(秒)
-        self.base_width = 6.0          # 基础宽度
         self.width_decay = 0.95        # 宽度衰减系数
-        self.color = QColor(100, 180, 255, 200)  # 拖尾颜色
         
         # 拖尾点存储
         self.points: List[TrailPoint] = []
@@ -52,23 +49,22 @@ class TrailRenderer:
         self.points.append(point)
         
         # 限制点数
-        if len(self.points) > self.max_points:
-            self.points.pop(0)
+        #if len(self.points) > self.max_points:
+        #    self.points.pop(0)
             
     def update_frame(self, current_time: float):
-        """每帧更新 - 清理过期点"""
+        """更精确的过期点清理逻辑"""
         self.last_update_time = current_time
         
-        # 移除过期的点
-        active_points = []
-        for point in self.points:
-            age = current_time - point.timestamp
-            if age <= self.trail_lifetime:
-                active_points.append(point)
-        self.points = active_points
+        # 计算绝对截止时间（比当前时间早lifetime秒的点需要移除）
+        cutoff_time = current_time - self.constants .TIME
+        
+        # 使用列表推导式高效过滤（保留时间戳大于等于cutoff_time的点）
+        self.points = [p for p in self.points if p.timestamp >= cutoff_time]
+        #print(cutoff_time, [self.points[i].timestamp for i in range(len(self.points))])
         
     def generate_segments(self) -> List[TrailSegment]:
-        """生成拖尾线段数据用于绘制"""
+        """每帧更新 - 生成拖尾线段数据用于绘制"""
         if len(self.points) < 2:
             return []
             
@@ -80,18 +76,18 @@ class TrailRenderer:
             end_point = self.points[i + 1]
             
             # 计算线段属性
-            age_ratio = (current_time - start_point.timestamp) / self.trail_lifetime
+            age_ratio = (current_time - start_point.timestamp) / self.constants.TIME
             alpha = int(255 * (1 - age_ratio))  # 年龄越大越透明
             
             # 宽度根据位置递减
             width_factor = (len(self.points) - i) / len(self.points)
-            width = self.base_width * width_factor * start_point.pressure
+            width = self.constants.WIDTH(age_ratio) * width_factor * start_point.pressure
             
             segment = TrailSegment(
                 start_point=start_point,
                 end_point=end_point,
                 width=max(1.0, width),
-                color=self.color,
+                color=self.constants.get_color(age_ratio),
                 alpha=max(0, alpha)
             )
             segments.append(segment)

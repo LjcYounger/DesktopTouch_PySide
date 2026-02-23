@@ -155,8 +155,7 @@ class FullScreenWidget(QWidget):
             # 绘制拖尾特效
             segments = self.trail_renderer.generate_segments()
             for segment in segments:
-                color = QColor(segment.color.red(), segment.color.green(), 
-                             segment.color.blue(), segment.alpha)
+                color = QColor(*segment.color)
                 pen = QPen(color, segment.width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
                 painter.setPen(pen)
                 painter.drawLine(segment.start_point.position, segment.end_point.position)
