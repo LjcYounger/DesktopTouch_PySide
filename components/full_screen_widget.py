@@ -150,7 +150,7 @@ class FullScreenWidget(QWidget):
                 for center in self.ring_centers:
                     # 确保位置是QPointF类型
                     center_pos = QPointF(center) if not isinstance(center, QPointF) else center
-                    painter.drawEllipse(center_pos, 5, 5)      # 绘制半径为5的圆点
+                    painter.drawEllipse(center_pos, 3, 3)      # 绘制半径为5的圆点
             
             # 绘制拖尾特效
             segments = self.trail_renderer.generate_segments()

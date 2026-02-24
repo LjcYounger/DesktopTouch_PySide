@@ -1,6 +1,14 @@
 import numpy as np
 from PySide6.QtGui import QImage, QPixmap, QPainter
 from PySide6.QtCore import Qt
+from functools import lru_cache
+from typing import Tuple
+
+# 缓存常用颜色转换结果
+@lru_cache(maxsize=128)
+def _get_color_multiplier(color: Tuple[int, int, int]) -> np.ndarray:
+    """缓存颜色乘数计算"""
+    return np.array(color, dtype=np.float32) / 255.0
 
 def load_grayscale_image(image_path: str) -> QImage:
     return QImage(image_path)
@@ -42,50 +50,14 @@ def slice_image_vertically(image: QImage) -> list[QImage]:
     width = image.width()
     height = image.height()
     
-    # 创建存储切片的列表
-    slices = []
+    # 预分配列表大小以提高性能
+    slices = [None] * width
     
     # 按1像素宽度逐个切割
     for x in range(width):
-        slice_img = image.copy(x, 0, 1, height)
-        slices.append(slice_img)
+        slices[x] = image.copy(x, 0, 1, height)
     
     return slices
-
-def repeat_vertical_strip_horizontally(image: QPixmap, length: int) -> QPixmap:
-    """
-    将竖条窄图像横向复制指定次数
-    
-    Args:
-        image (QPixmap): 输入的竖条图像
-        length (int): 复制次数，也是输出图像的最终宽度
-        
-    Returns:
-        QPixmap: 横向重复后的图像
-    """
-    
-    # 将QPixmap转换为QImage以便处理
-    img = image.toImage()
-    
-    # 确保图像是Format_ARGB32格式
-    if img.format() != QImage.Format.Format_ARGB32:
-        img = img.convertToFormat(QImage.Format.Format_ARGB32)
-    
-    width = img.width()
-    height = img.height()
-    
-    # 创建结果图像
-    result_img = QImage(length, height, QImage.Format.Format_ARGB32)
-    result_img.fill(Qt.GlobalColor.transparent)  # 填充透明背景
-    
-    # 使用 QPainter 进行高效的图像复制
-    painter = QPainter(result_img)
-    for i in range(length):
-        x_offset = i * width
-        painter.drawImage(x_offset, 0, img)
-    painter.end()
-    
-    return QPixmap.fromImage(result_img)
 
 def change_image_by_grayscale(image: QImage, 
                               color: tuple, 
@@ -111,12 +83,12 @@ def change_image_by_grayscale(image: QImage,
     if image.format() != QImage.Format.Format_ARGB32:
         image = image.convertToFormat(QImage.Format.Format_ARGB32)
     
-    # 将QImage转换为numpy数组
+    # 获取图像尺寸
     width = image.width()
     height = image.height()
     
     # 使用memoryview获取图像数据
-    ptr = image.bits()
+    ptr = image.constBits()  # 使用constBits避免修改原图像
     img_array = np.frombuffer(ptr, dtype=np.uint8)
     img_array = img_array.reshape((height, width, 4))  # ARGB格式
     
@@ -130,31 +102,33 @@ def change_image_by_grayscale(image: QImage,
     # 归一化灰度值
     gray_normalized = gray_values / 255.0
     
-    # 解包目标颜色
-    target_r, target_g, target_b = color
+    # 获取预计算的颜色乘数
+    color_multiplier = _get_color_multiplier(color)
+    target_r, target_g, target_b = color_multiplier * 255
     
-    # 如果grayscale_image_transparent为True，则直接替换RGB值
+    # 预分配结果数组
+    result_array = np.empty((height, width, 4), dtype=np.uint8)
+    
+    # 向量化计算RGB值
+    result_array[:, :, 2] = (target_r * gray_normalized).astype(np.uint8)  # R
+    result_array[:, :, 1] = (target_g * gray_normalized).astype(np.uint8)  # G
+    result_array[:, :, 0] = (target_b * gray_normalized).astype(np.uint8)  # B
+    
+    # 处理Alpha通道
     if grayscale_image_transparent:
-        new_r = (target_r * gray_normalized).astype(np.uint8)
-        new_g = (target_g * gray_normalized).astype(np.uint8)
-        new_b = (target_b * gray_normalized).astype(np.uint8)
-        new_a = img_array[:, :, 3]  # 保留原始Alpha通道
+        # 保留原始Alpha通道
+        result_array[:, :, 3] = img_array[:, :, 3]
     else:
-        # 计算新的RGB值
-        new_r = (target_r * gray_normalized).astype(np.uint8)
-        new_g = (target_g * gray_normalized).astype(np.uint8)
-        new_b = (target_b * gray_normalized).astype(np.uint8)
-        
         # 计算新的Alpha值
-        new_a = (alpha * gray_values / impact_on_transparency).astype(np.uint8)
-        new_a = np.clip(new_a, 0, 255)  # 限制在0-255范围内
+        alpha_factor = alpha / impact_on_transparency
+        new_alpha = (alpha_factor * gray_values).astype(np.uint8)
+        result_array[:, :, 3] = np.clip(new_alpha, 0, 255)
     
-    # 组合成新的ARGB图像数组（注意Qt使用BGRA顺序）
-    result_array = np.stack([new_b, new_g, new_r, new_a], axis=2)
+    # 创建新的QImage（使用副本确保数据独立性）
+    result_image = QImage(result_array.data, width, height, 
+                         width * 4, QImage.Format.Format_ARGB32)
     
-    # 创建新的QImage
-    result_image = QImage(result_array.data, width, height, QImage.Format.Format_ARGB32)
-    # 确保数据独立，避免内存释放问题
-    result_image = result_image.copy()
+    # 创建独立副本避免内存问题
+    final_image = result_image.copy()
     
-    return QPixmap.fromImage(result_image)
+    return QPixmap.fromImage(final_image)
